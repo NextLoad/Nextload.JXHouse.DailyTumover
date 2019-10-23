@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+  <link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css" />
+  <link href="css/detail.css" rel="stylesheet" type="text/css" />
+
+</head>
+<body>
+  <div id="app">
+    <input v-model="dateNow" type="date" id="datetimeNow" value="">
+    <button v-on:click="getTotalTumovers">查询</button>
+    <div class="middle_right">
+      <div class="middle_right_bar">
+        商品房成交信息
+      </div>
+      <div id="deal_info"></div>
+    </div>
+
+    <div class="table_title">
+      <div class="table_title1" style="text-align:left"> 商品房成交信息（按类型）</div>
+      <div class="table_title2" style="text-align:right"> 统计时间：{{tumoverInfo.ScDatetime}}</div>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>房屋用途</th>
+          <th v-for="item in tumoverInfo.TotalTumovers">{{item.HouseUsage2.Name}}</th>
+          <th>合计</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>成交套数</td>
+          <td v-for="item in tumoverInfo.TotalTumovers">{{item.Count}}</td>
+          <td>{{totalTs}}</td>
+        </tr>
+        <tr>
+          <td>成交面积</td>
+          <td v-for="item in tumoverInfo.TotalTumovers">{{item.Area}}</td>
+          <td>{{totalAreas}}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="table_title">
+      <div class="table_title1" style="text-align:left"> 商品房成交信息（按区域）</div>
+      <div class="table_title2" style="text-align:right">统计时间：{{tumoverInfo.ScDatetime}}</div>
+    </div>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>区域</th>
+          <th colspan="2">住宅</th>
+          <th colspan="2">非住宅</th>
+        </tr>
+      </thead>
+      <thead>
+        <tr>
+          <th></th>
+          <th>套数</th>
+          <th>面积</th>
+          <th>套数</th>
+          <th>面积</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in tumoversGloab">
+          <th>{{item.name}}</th>
+          <th>{{item.zzCount}}</th>
+          <th>{{item.zzArea}}</th>
+          <th>{{item.fzzCount}}</th>
+          <th>{{item.fzzArea}}</th>
+        </tr>
+        <tr>
+          <th>合计</th>
+          <th>{{totalqyzzts}}</th>
+          <th>{{totalqyzzAreas}}</th>
+          <th>{{totalqyfzzts}}</th>
+          <th>{{totalqyfzzAreas}}</th>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script src="Js/vue.js"></script>
+  <script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+<script>
+  
+  const app = new Vue({
+    el: '#app',
+    data: {
+      message: 'hello Vuejs',
+      dateNow: new Date().getFullYear() + '-' + (new Date().getMonth() + 1) + '-' + new Date().getDate(),
+      tumoverInfo: { TotalTumovers: [], Tumovers: [], ScDatetime: new Date().toLocaleDateString() },
+      tumoversGloab: []
+    },
+    methods: {
+      getTotalTumovers: function(){
+        this.$http.post('http://localhost:51595/customapi/Tumover/GetJxSpf', { date: this.dateNow }, { emulateJSON: true }).then(function (res) {
+          this.tumoverInfo = res.body;
+          if (this.tumoverInfo.Tumovers == null) {
+            alert("暂无记录");
+            this.tumoverInfo = { TotalTumovers: [], Tumovers: [], ScDatetime: new Date().toLocaleDateString() };
+            this.tumoversGloab = [];
+            return;
+          }
+          this.getTumovers();
+        },function(res){
+          console.log(res.status);
+        });
+      },
+      getTumovers: function () {
+        var tumovers = [];
+        var regionIds = [];
+        for (var i = 0; i < this.tumoverInfo.Tumovers.length; i++) {
+          if (regionIds.indexOf(this.tumoverInfo.Tumovers[i].RegionId) === -1) {
+            regionIds.push(this.tumoverInfo.Tumovers[i].RegionId);
+          }
+        }
+        for (var i = 0; i < regionIds.length; i++) {
+          var name, zzCount, zzArea, fzzCount, fzzArea;
+          
+          for (var j = 0; j < this.tumoverInfo.Tumovers.length; j++) {
+            if (regionIds[i] === this.tumoverInfo.Tumovers[j].RegionId) {
+              name = this.tumoverInfo.Tumovers[j].Region.Name;
+              if (this.tumoverInfo.Tumovers[j].HouseUsageId === 1) {
+                zzCount = this.tumoverInfo.Tumovers[j].Count;
+                zzArea = this.tumoverInfo.Tumovers[j].Area;
+              } else if (this.tumoverInfo.Tumovers[j].HouseUsageId === 3) {
+                fzzCount = this.tumoverInfo.Tumovers[j].Count;
+                fzzArea = this.tumoverInfo.Tumovers[j].Area;
+              }
+            }
+          }
+          var tumover = {
+            'name': name,
+            'zzCount': zzCount,
+            'zzArea': zzArea,
+            'fzzCount': fzzCount,
+            'fzzArea': fzzArea
+          }
+          tumovers.push(tumover);
+        }
+        this.tumoversGloab = tumovers;
+      },
+      getDateTimeNow: function() {
+        var now = new Date(),
+          year = now.getFullYear(),
+          month = ((now.getMonth() + 1) > 9) ? (now.getMonth() + 1) : ("0" + (now.getMonth() +
+            1)),
+          date = translate(now.getDate()),
+          hour = translate(now.getHours()),
+          minute = translate(now.getMinutes()),
+          second = translate(now.getSeconds());
+        function translate(prop) {
+          if (prop <= 9) {
+            return "0" + prop;
+          } else {
+            return prop;
+          }
+        }
+        dateTimeNow = year + "-" + month + "-" + date;
+        return dateTimeNow;
+      }
+    },
+    computed: {
+      totalTs: function () {
+        var totalCount = 0;
+        for (var i = 0; i < this.tumoverInfo.TotalTumovers.length; i++) {
+          totalCount += this.tumoverInfo.TotalTumovers[i].Count;
+        }
+        return totalCount;
+      },
+      totalAreas: function() {
+        var totalArea = 0;
+        for (var i = 0; i < this.tumoverInfo.TotalTumovers.length; i++) {
+          totalArea += this.tumoverInfo.TotalTumovers[i].Area;
+        }
+        return totalArea;
+      },
+      totalqyzzts: function() {
+        var totalCount = 0;
+        for (var i = 0; i < this.tumoverInfo.Tumovers.length; i++) {
+          if (this.tumoverInfo.Tumovers[i].HouseUsageId != 1) continue;
+          totalCount += this.tumoverInfo.Tumovers[i].Count;
+        }
+        return totalCount;
+      },
+      totalqyzzAreas: function () {
+        var totalArea = 0;
+        for (var i = 0; i < this.tumoverInfo.Tumovers.length; i++) {
+          if (this.tumoverInfo.Tumovers[i].HouseUsageId != 1) continue;
+          totalArea += this.tumoverInfo.Tumovers[i].Area;
+        }
+        return totalArea;
+      },
+      totalqyfzzts: function() {
+        var totalCount = 0;
+        for (var i = 0; i < this.tumoverInfo.Tumovers.length; i++) {
+          if (this.tumoverInfo.Tumovers[i].HouseUsageId == 1) continue;
+          totalCount += this.tumoverInfo.Tumovers[i].Count;
+        }
+        return totalCount;
+      },
+      totalqyfzzAreas: function () {
+        var totalArea = 0;
+        for (var i = 0; i < this.tumoverInfo.Tumovers.length; i++) {
+          if (this.tumoverInfo.Tumovers[i].HouseUsageId == 1) continue;
+          totalArea += this.tumoverInfo.Tumovers[i].Area;
+        }
+        return totalArea;
+      }
+    }
+  });
+  window.onload = function () {
+    app.getTotalTumovers();
+    document.getElementById('datetimeNow').value = app.getDateTimeNow();
+  }
+</script>
+</body>
+</html>
